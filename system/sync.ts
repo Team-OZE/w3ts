@@ -36,7 +36,7 @@ class SyncIncomingPacket {
 
   public readonly chunks: number;
 
-  public readonly data: string;
+  public data: string;
 
   public readonly req: SyncRequest;
 
@@ -119,6 +119,12 @@ export class SyncRequest {
   private _startTime = 0;
 
   private chunks: string[] = [];
+
+  private chunksList: string[] = [];
+
+  private currentlySendingChunk = -1;
+
+  private totalChunks = 0;
 
   private currentChunk = 0;
 
@@ -205,6 +211,18 @@ export class SyncRequest {
     this.destroyed = true;
   }
 
+  public sendNextChunk() {
+    if(this.chunksList.length < 1) {
+      return false
+    }
+
+    this.currentlySendingChunk++
+
+    this.send(new SyncOutgoingPacket(this, '!:' + this.chunksList[0], this.currentlySendingChunk, this.totalChunks))
+    this.chunksList.shift()
+    return true
+  }
+
   /**
    * Start syncing
    * @param data The data to sync. If data was passed to the constructor then nothing will happen.
@@ -223,15 +241,11 @@ export class SyncRequest {
       // if the data is too long then send it over multiple packets
       const chunks = Math.floor(data.length / SYNC_MAX_CHUNK_SIZE);
       for (let i = 0; i <= chunks; i++) {
-        this.send(
-          new SyncOutgoingPacket(
-            this,
-            data.substr(i * SYNC_MAX_CHUNK_SIZE, SYNC_MAX_CHUNK_SIZE),
-            i,
-            chunks
-          )
-        );
+        this.chunksList.push(data.substr(i * SYNC_MAX_CHUNK_SIZE, SYNC_MAX_CHUNK_SIZE))
       }
+      this.totalChunks = chunks
+      this.currentlySendingChunk = -1
+      this.sendNextChunk()
     }
 
     this._startTime = getElapsedTime();
@@ -338,6 +352,9 @@ export class SyncRequest {
     if (packet.req === undefined) {
       return;
     }
+    if(packet.data.substring(0, 2) === '!:') {
+      packet.data = packet.data.substring(2)
+    }
 
     packet.req.currentChunk++;
     packet.req.chunks[packet.chunk] = packet.data;
@@ -352,6 +369,9 @@ export class SyncRequest {
           packet.req
         );
       }
+    }
+    else {
+      packet.req.sendNextChunk()
     }
   }
 }

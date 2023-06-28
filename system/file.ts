@@ -31,7 +31,7 @@ export class File {
   private static dummyAbility: number = FourCC("Amls");
 
   // The string limit per Preload call.
-  private static preloadLimit = 259;
+  private static preloadLimit = 258;
 
   // eslint-disable-next-line no-useless-constructor
   private constructor() {
@@ -111,7 +111,7 @@ export class File {
     }
 
     for (let i = 0; i < contents.length / File.preloadLimit; i++) {
-      Preload(`${contents.substr(i * File.preloadLimit, File.preloadLimit)}`);
+      Preload(`${contents.substring(i * File.preloadLimit, (i+1) * File.preloadLimit).replace('"', '\"')}`);
     }
 
     if (allowReading) {
