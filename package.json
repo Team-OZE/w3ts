@@ -1,8 +1,8 @@
 {
   "name": "w3ts",
-  "version": "3.0.2",
+  "version": "3.0.2-oze1.0",
   "description": "TypeScript API for Warcraft III custom maps.",
-  "author": "TriggerHappy",
+  "author": "TriggerHappy & Cloud9 (Team OZE)",
   "license": "MIT",
   "main": "./index.ts",
   "scripts": {
@@ -30,12 +30,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cipherxof/w3ts.git"
+    "url": "git+https://github.com/team-oze/w3ts.git"
   },
-  "bugs": {
-    "url": "https://github.com/cipherxof/w3ts/issues"
-  },
-  "homepage": "https://github.com/cipherxof/w3ts#readme",
   "files": [
     "./**/*.lua",
     "./**/*.d.ts"
