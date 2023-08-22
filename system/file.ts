@@ -31,6 +31,7 @@ export class File {
   private static dummyAbility: number = FourCC("Amls");
 
   // The string limit per Preload call.
+  // Now, actual limit is 259, but some chars like \\ and stuff make trouble.
   private static preloadLimit = 258;
 
   // eslint-disable-next-line no-useless-constructor
@@ -109,9 +110,36 @@ export class File {
       );
       contents = File.escape(contents);
     }
+    const lb = contents.length;
+    const l = utf8.len(contents);
+    let currentCharIndex = 0;
+    for (let i = 0; i < lb / File.preloadLimit; i++) {
+      const lastCharIndex =
+        currentCharIndex > 0 ? currentCharIndex - 1 : currentCharIndex;
+      const lastByteIndex = (i + 1) * File.preloadLimit - 1;
+      while (true) {
+        if (currentCharIndex > l) {
+          break;
+        }
+        const nextCharStartByteIndex = utf8.offset(
+          contents,
+          currentCharIndex + 1
+        );
+        if (nextCharStartByteIndex > lastByteIndex) break;
+        else {
+          currentCharIndex++;
+        }
+      }
+      const firstByteZeroBasedIndex =
+        utf8.offset(contents, lastCharIndex + 1) - 1;
+      const lastByteZeroBasedIndex =
+        utf8.offset(contents, currentCharIndex) - 1;
 
-    for (let i = 0; i < contents.length / File.preloadLimit; i++) {
-      Preload(`${contents.substring(i * File.preloadLimit, (i+1) * File.preloadLimit).replace('"', '\"')}`);
+      Preload(
+        `${contents
+          .substring(firstByteZeroBasedIndex, lastByteZeroBasedIndex)
+          .replace('"', '\\"')}`
+      );
     }
 
     if (allowReading) {
