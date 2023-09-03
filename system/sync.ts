@@ -10,7 +10,7 @@ import { getElapsedTime } from "./gametime";
 
 const SYNC_PREFIX = "T";
 const SYNC_PREFIX_CHUNK = "S";
-const SYNC_MAX_CHUNK_SIZE = 244;
+const SYNC_MAX_CHUNK_SIZE = 243;
 
 export const enum SyncStatus {
   None,
@@ -212,15 +212,22 @@ export class SyncRequest {
   }
 
   public sendNextChunk() {
-    if(this.chunksList.length < 1) {
-      return false
+    if (this.chunksList.length < 1) {
+      return false;
     }
 
-    this.currentlySendingChunk++
+    this.currentlySendingChunk++;
 
-    this.send(new SyncOutgoingPacket(this, '!:' + this.chunksList[0], this.currentlySendingChunk, this.totalChunks))
-    this.chunksList.shift()
-    return true
+    this.send(
+      new SyncOutgoingPacket(
+        this,
+        `!:${this.chunksList[0]}`,
+        this.currentlySendingChunk,
+        this.totalChunks
+      )
+    );
+    this.chunksList.shift();
+    return true;
   }
 
   /**
@@ -239,13 +246,40 @@ export class SyncRequest {
       this.send(new SyncOutgoingPacket(this, data));
     } else {
       // if the data is too long then send it over multiple packets
-      const chunks = Math.floor(data.length / SYNC_MAX_CHUNK_SIZE);
-      for (let i = 0; i <= chunks; i++) {
-        this.chunksList.push(data.substr(i * SYNC_MAX_CHUNK_SIZE, SYNC_MAX_CHUNK_SIZE))
+      const lb = data.length;
+      const l = utf8.len(data);
+      let currentCharIndex = 0;
+
+      this.totalChunks = 0;
+      for (let i = 0; i < lb / SYNC_MAX_CHUNK_SIZE; i++) {
+        const lastCharIndex =
+          currentCharIndex > 0 ? currentCharIndex - 1 : currentCharIndex;
+        const lastByteIndex = (i + 1) * SYNC_MAX_CHUNK_SIZE - 1;
+        while (true) {
+          if (currentCharIndex > l) {
+            break;
+          }
+          const nextCharStartByteIndex = utf8.offset(
+            data,
+            currentCharIndex + 1
+          );
+          if (nextCharStartByteIndex > lastByteIndex) break;
+          else {
+            currentCharIndex++;
+          }
+        }
+        const firstByteZeroBasedIndex =
+          utf8.offset(data, lastCharIndex + 1) - 1;
+        const lastByteZeroBasedIndex = utf8.offset(data, currentCharIndex) - 1;
+        const sub = data.substring(
+          firstByteZeroBasedIndex,
+          lastByteZeroBasedIndex
+        );
+        this.chunksList.push(sub);
+        this.totalChunks++;
       }
-      this.totalChunks = chunks
-      this.currentlySendingChunk = -1
-      this.sendNextChunk()
+      this.currentlySendingChunk = -1;
+      this.sendNextChunk();
     }
 
     this._startTime = getElapsedTime();
@@ -352,14 +386,13 @@ export class SyncRequest {
     if (packet.req === undefined) {
       return;
     }
-    if(packet.data.substring(0, 2) === '!:') {
-      packet.data = packet.data.substring(2)
+    if (packet.data.substring(0, 2) === "!:") {
+      packet.data = packet.data.substring(2);
     }
 
     packet.req.currentChunk++;
     packet.req.chunks[packet.chunk] = packet.data;
-
-    if (packet.chunk >= packet.chunks) {
+    if (packet.chunk >= packet.chunks - 1) {
       if (packet.req.onResponse) {
         const data = packet.req.chunks.join("");
         const status = SyncStatus.Success;
@@ -369,9 +402,8 @@ export class SyncRequest {
           packet.req
         );
       }
-    }
-    else {
-      packet.req.sendNextChunk()
+    } else {
+      packet.req.sendNextChunk();
     }
   }
 }
