@@ -60,23 +60,22 @@ function findHost() {
 
         // skip if the player is not playing
         if (
-          p === undefined ||
-          p.slotState !== PLAYER_SLOT_STATE_PLAYING ||
-          p.controller !== MAP_CONTROL_USER
+          !(
+            p === undefined ||
+            p.slotState !== PLAYER_SLOT_STATE_PLAYING ||
+            p.controller !== MAP_CONTROL_USER
+          )
         ) {
-          // eslint-disable-next-line no-continue
-          continue;
-        }
+          // if a playing user has not yet finished syncing then terminate execution
+          if (!lobbyTimes[p.id]) {
+            return;
+          }
 
-        // if a playing user has not yet finished syncing then terminate execution
-        if (!lobbyTimes[p.id]) {
-          return;
-        }
-
-        // store the host with the longest game time
-        if (lobbyTimes[p.id] > hostTime) {
-          hostTime = lobbyTimes[p.id];
-          hostId = p.id;
+          // store the host with the longest game time
+          if (lobbyTimes[p.id] > hostTime) {
+            hostTime = lobbyTimes[p.id];
+            hostId = p.id;
+          }
         }
       }
 
