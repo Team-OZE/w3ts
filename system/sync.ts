@@ -7,6 +7,7 @@ import { base64Decode, base64Encode } from "./base64";
 import { BinaryReader } from "./binaryreader";
 import { BinaryWriter } from "./binarywriter";
 import { getElapsedTime } from "./gametime";
+import { cutString } from "../utils/index";
 
 const SYNC_PREFIX = "T";
 const SYNC_PREFIX_CHUNK = "S";
@@ -246,37 +247,14 @@ export class SyncRequest {
       this.send(new SyncOutgoingPacket(this, data));
     } else {
       // if the data is too long then send it over multiple packets
-      const lb = data.length;
-      const l = utf8.len(data);
-      let currentCharIndex = 0;
-
       this.totalChunks = 0;
-      for (let i = 0; i < lb / SYNC_MAX_CHUNK_SIZE; i++) {
-        const lastCharIndex =
-          currentCharIndex > 0 ? currentCharIndex - 1 : currentCharIndex;
-        const lastByteIndex = (i + 1) * SYNC_MAX_CHUNK_SIZE - 1;
-        while (true) {
-          if (currentCharIndex > l) {
-            break;
-          }
-          const nextCharStartByteIndex = utf8.offset(
-            data,
-            currentCharIndex + 1
-          );
-          if (nextCharStartByteIndex > lastByteIndex) break;
-          else {
-            currentCharIndex++;
-          }
-        }
-        const firstByteZeroBasedIndex =
-          utf8.offset(data, lastCharIndex + 1) - 1;
-        const lastByteZeroBasedIndex = utf8.offset(data, currentCharIndex) - 1;
-        const sub = data.substring(
-          firstByteZeroBasedIndex,
-          lastByteZeroBasedIndex
-        );
-        this.chunksList.push(sub);
+      const subs = cutString(data, SYNC_MAX_CHUNK_SIZE);
+      const ll = subs.length;
+      let i = 0;
+      while (i < ll) {
+        this.chunksList.push(subs[i]);
         this.totalChunks++;
+        i++;
       }
       this.currentlySendingChunk = -1;
       this.sendNextChunk();

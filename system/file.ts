@@ -3,6 +3,8 @@
 /* eslint-disable prefer-destructuring */
 /* eslint-disable no-param-reassign */
 
+import { cutString } from "../utils/index";
+
 /**
  * A system which provides the ability to read and write files. There are no standard IO natives
  * so this system relies on an exploit which ended up being sanctioned by Blizzard, and because of this
@@ -110,37 +112,9 @@ export class File {
       );
       contents = File.escape(contents);
     }
-    const lb = contents.length;
-    const l = utf8.len(contents);
-    let currentCharIndex = 0;
-    for (let i = 0; i < lb / File.preloadLimit; i++) {
-      const lastCharIndex =
-        currentCharIndex > 0 ? currentCharIndex - 1 : currentCharIndex;
-      const lastByteIndex = (i + 1) * File.preloadLimit - 1;
-      while (true) {
-        if (currentCharIndex > l) {
-          break;
-        }
-        const nextCharStartByteIndex = utf8.offset(
-          contents,
-          currentCharIndex + 1
-        );
-        if (nextCharStartByteIndex > lastByteIndex) break;
-        else {
-          currentCharIndex++;
-        }
-      }
-      const firstByteZeroBasedIndex =
-        utf8.offset(contents, lastCharIndex + 1) - 1;
-      const lastByteZeroBasedIndex =
-        utf8.offset(contents, currentCharIndex) - 1;
-
-      Preload(
-        `${contents
-          .substring(firstByteZeroBasedIndex, lastByteZeroBasedIndex)
-          .replace('"', '\\"')}`
-      );
-    }
+    cutString(contents, File.preloadLimit).forEach((sub: string) =>
+      Preload(sub.replace('"', '\\"'))
+    );
 
     if (allowReading) {
       Preload(
